@@ -1,16 +1,31 @@
 <?php
 
+/**
+ * Controlador de Usuarios - Gestión completa de usuarios del sistema
+ * 
+ * Maneja todas las operaciones CRUD de usuarios, autenticación,
+ * gestión de fotografías de perfil y control de acceso por tipo de usuario.
+ * Incluye funcionalidades para administradores y usuarios normales.
+ * 
+ * @author Daniela Pérez Peralta
+ * @author Jesús Felipe Avilez
+ * @version 2.0.0
+ */
+
 namespace App\Http\Controllers;
 
 use App\Models\Usuarios;
 use App\Models\Lugar;
+use App\Models\Material;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
 
 class UsuarioController extends Controller
 {
-    // Listado de usuarios paginados (10 por página)
+    /**
+     * Muestra el listado paginado de usuarios con sus lugares
+     */
     public function index()
     {
         $usuarios = Usuarios::with('lugar')->paginate(10);
@@ -18,45 +33,50 @@ class UsuarioController extends Controller
         return view('index', compact('usuarios', 'lugares'));
     }
 
-    // Vista de materiales para administradores
- 
-public function indexMateriales(Request $request)
-{
+    /**
+     * Vista de materiales para administradores con búsqueda
+     */
+    public function indexMateriales(Request $request)
+    {
+        $lugares = Lugar::all();
+        $query = $request->input('query');
 
-    $lugares = Lugar::all();
-    $query = $request->input('query');
+        $materiales = Material::when($query, function ($q) use ($query) {
+            $q->where(function ($subquery) use ($query) {
+                $subquery->where('clave_material', 'like', '%' . $query . '%')
+                    ->orWhere('descripcion', 'like', '%' . $query . '%')
+                    ->orWhere('generico', 'like', '%' . $query . '%')
+                    ->orWhere('clasificacion', 'like', '%' . $query . '%')
+                    ->orWhere('existencia', 'like', '%' . $query . '%')
+                    ->orWhere('costo_promedio', 'like', '%' . $query . '%');
+            });
+        })->paginate(10);
 
-    $materiales = Material::when($query, function ($q) use ($query) {
-        $q->where(function ($subquery) use ($query) {
-            $subquery->where('clave_material', 'like', '%' . $query . '%')
-                ->orWhere('descripcion', 'like', '%' . $query . '%')
-                ->orWhere('generico', 'like', '%' . $query . '%')
-                ->orWhere('clasificacion', 'like', '%' . $query . '%')
-                ->orWhere('existencia', 'like', '%' . $query . '%')
-                ->orWhere('costo_promedio', 'like', '%' . $query . '%');
-        });
-    })->paginate(10);
+        return view('index_materiales_simple', compact('materiales', 'lugares'));
+    }
 
-    return view('index_materiales_simple', compact('materiales', 'lugares'));
-}
+    /**
+     * Crea un nuevo usuario con validaciones y manejo de foto
+     */
     public function store(Request $request)
     {
         $validated = $request->validate([
-            'nombre'       => 'required|string|max:255',
-            'correo'       => 'required|email|unique:tb_users,correo|max:255',
-            'password'     => 'required|min:6',
+            'nombre' => 'required|string|max:255',
+            'correo' => 'required|email|unique:tb_users,correo|max:255',
+            'password' => 'required|min:6',
             'tipo_usuario' => 'required|integer',
             'foto_usuario' => 'nullable|image|mimes:jpeg,png|max:2048',
-            'id_lugar'     => 'required|integer|exists:tb_lugares,id_lugar',
+            'id_lugar' => 'required|integer|exists:tb_lugares,id_lugar',
         ]);
 
+        // Manejo de foto de perfil
         if ($request->hasFile('foto_usuario')) {
             $archivo = $request->file('foto_usuario');
             $nombreFoto = time() . '_' . uniqid() . '.' . $archivo->getClientOriginalExtension();
             $archivo->move(public_path('img'), $nombreFoto);
             $validated['foto_usuario'] = $nombreFoto;
         } else {
-            // Asignar imagen predeterminada en creación
+            // Imagen predeterminada para nuevos usuarios
             $validated['foto_usuario'] = 'Sin_Foto.png';
         }
 
@@ -66,10 +86,14 @@ public function indexMateriales(Request $request)
 
         return response()->json([
             'message' => 'Usuario registrado correctamente',
-            'data'    => $usuario
+            'data' => $usuario
         ], 201);
     }
 
+    /**
+     * Actualiza un usuario existente
+     * Maneja cambio de foto y preserva la actual si no se sube nueva
+     */
     public function update(Request $request, $id)
     {
         $usuario = Usuarios::find($id);
@@ -78,18 +102,21 @@ public function indexMateriales(Request $request)
         }
 
         $validated = $request->validate([
-            'nombre'       => 'sometimes|required|string|max:255',
-            'correo'       => 'sometimes|required|email|unique:tb_users,correo,' . $id . ',id_usuario|max:255',
-            'password'     => 'nullable|min:6',
+            'nombre' => 'sometimes|required|string|max:255',
+            'correo' => 'sometimes|required|email|unique:tb_users,correo,' . $id . ',id_usuario|max:255',
+            'password' => 'nullable|min:6',
             'tipo_usuario' => 'sometimes|required|integer',
             'foto_usuario' => 'nullable|image|mimes:jpeg,png|max:2048',
-            'id_lugar'     => 'sometimes|required|integer|exists:tb_lugares,id_lugar',
+            'id_lugar' => 'sometimes|required|integer|exists:tb_lugares,id_lugar',
         ]);
 
+        // Manejo de foto de perfil en actualización
         if ($request->hasFile('foto_usuario')) {
-            // Si ya existe una foto y NO es la predeterminada, la eliminamos
-            if ($usuario->foto_usuario && $usuario->foto_usuario !== 'Sin_Foto.png' &&
-                file_exists(public_path('img/' . $usuario->foto_usuario))) {
+            // Eliminar foto anterior si existe y no es la predeterminada
+            if (
+                $usuario->foto_usuario && $usuario->foto_usuario !== 'Sin_Foto.png' &&
+                file_exists(public_path('img/' . $usuario->foto_usuario))
+            ) {
                 unlink(public_path('img/' . $usuario->foto_usuario));
             }
             $archivo = $request->file('foto_usuario');
@@ -97,13 +124,13 @@ public function indexMateriales(Request $request)
             $archivo->move(public_path('img'), $nombreFoto);
             $validated['foto_usuario'] = $nombreFoto;
         } else {
-            // Si no se envía un nuevo archivo, mantenemos la foto actual.
-            // Opcional: Si el usuario no tiene foto asignada, se establece la predeterminada.
+            // Mantener foto actual o asignar predeterminada si no tiene
             if (!$usuario->foto_usuario) {
                 $validated['foto_usuario'] = 'Sin_Foto.png';
             }
         }
 
+        // Encriptar contraseña solo si se proporciona
         if (isset($validated['password']) && !empty($validated['password'])) {
             $validated['password'] = Hash::make($validated['password']);
         } else {
@@ -114,10 +141,13 @@ public function indexMateriales(Request $request)
 
         return response()->json([
             'message' => 'Usuario actualizado correctamente',
-            'data'    => $usuario
+            'data' => $usuario
         ]);
     }
 
+    /**
+     * Muestra los datos de un usuario específico
+     */
     public function show($id)
     {
         $usuario = Usuarios::with('lugar')->find($id);
@@ -127,6 +157,9 @@ public function indexMateriales(Request $request)
         return response()->json(['data' => $usuario]);
     }
 
+    /**
+     * Obtiene los datos de un usuario para edición
+     */
     public function edit($id)
     {
         $usuario = Usuarios::with('lugar')->find($id);
@@ -137,6 +170,9 @@ public function indexMateriales(Request $request)
         return response()->json(['data' => $usuario, 'lugares' => $lugares]);
     }
 
+    /**
+     * Elimina un usuario y su foto asociada
+     */
     public function destroy($id)
     {
         $usuario = Usuarios::find($id);
@@ -144,8 +180,11 @@ public function indexMateriales(Request $request)
             return response()->json(['error' => 'Usuario no encontrado'], 404);
         }
 
-        if ($usuario->foto_usuario && $usuario->foto_usuario !== 'Sin_Foto.png' &&
-            file_exists(public_path('img/' . $usuario->foto_usuario))) {
+        // Eliminar foto si existe y no es la predeterminada
+        if (
+            $usuario->foto_usuario && $usuario->foto_usuario !== 'Sin_Foto.png' &&
+            file_exists(public_path('img/' . $usuario->foto_usuario))
+        ) {
             unlink(public_path('img/' . $usuario->foto_usuario));
         }
 
@@ -153,10 +192,15 @@ public function indexMateriales(Request $request)
         return response()->json(['message' => 'Usuario eliminado correctamente']);
     }
 
+    /**
+     * Maneja el proceso de autenticación
+     * Valida dominio de correo y redirige según tipo de usuario
+     */
     public function login(Request $request)
     {
         $credentials = $request->only('correo', 'password');
 
+        // Validar dominio corporativo
         if (!str_ends_with(strtolower(trim($credentials['correo'])), '@bonafont.com') && !str_ends_with(strtolower(trim($credentials['correo'])), '@danone.com')) {
             return back()->withErrors([
                 'correo' => 'Solo se admiten correos con el dominio @bonafont.com o @danone.com',
@@ -179,18 +223,19 @@ public function indexMateriales(Request $request)
 
         Auth::login($usuario);
 
-        // Redirección según el tipo de usuario
+        // Redirección según tipo de usuario
         if ($usuario->tipo_usuario == 1) {
-            // Usuario tipo 1 = Admin - va a la vista normal (como estaba antes)
+            // Admin - vista completa
             return redirect()->action([UsuarioController::class, 'index']);
         } else {
-            // Usuario tipo 2 = Usuario normal - va a materiales simple
+            // Usuario normal - vista de materiales
             return redirect()->route('materiales.index');
         }
     }
 
-
-    
+    /**
+     * Cierra sesión del usuario actual
+     */
     public function logout(Request $request)
     {
         Auth::logout();
@@ -199,7 +244,9 @@ public function indexMateriales(Request $request)
         return redirect()->route('login');
     }
 
-    // Funciones para uso vía MODAL (AJAX) utilizando la misma lógica
+    // === MÉTODOS PARA MODALES AJAX ===
+    // Utilizan la misma lógica que los métodos principales
+
     public function modalShowUser($id)
     {
         return $this->show($id);

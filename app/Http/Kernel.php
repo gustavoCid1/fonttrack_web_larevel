@@ -1,5 +1,16 @@
 <?php
 
+/**
+ * Kernel HTTP - Núcleo de middleware del sistema
+ * 
+ * Define la pila de middleware que se ejecuta en cada request HTTP.
+ * Configura el middleware global, grupos de middleware para web/API
+ * y aliases para facilitar el uso en rutas y controladores.
+ * 
+ * @author Gustavo Angel Cid Flores
+ * @version 2.0.0
+ */
+
 namespace App\Http;
 
 use Illuminate\Foundation\Http\Kernel as HttpKernel;
@@ -7,9 +18,11 @@ use Illuminate\Foundation\Http\Kernel as HttpKernel;
 class Kernel extends HttpKernel
 {
     /**
-     * The application's global HTTP middleware stack.
-     *
-     * These middleware are run during every request to your application.
+     * Middleware global de la aplicación
+     * 
+     * Estos middleware se ejecutan en cada request HTTP de la aplicación
+     * proporcionando funcionalidades base como CORS, validación de tamaño
+     * y limpieza de strings.
      *
      * @var array<int, class-string|string>
      */
@@ -24,7 +37,10 @@ class Kernel extends HttpKernel
     ];
 
     /**
-     * The application's route middleware groups.
+     * Grupos de middleware para diferentes tipos de rutas
+     * 
+     * Define conjuntos de middleware que se aplican a grupos específicos
+     * de rutas como web (con sesiones y CSRF) o API (con throttling).
      *
      * @var array<string, array<int, class-string|string>>
      */
@@ -40,15 +56,16 @@ class Kernel extends HttpKernel
 
         'api' => [
             // \Laravel\Sanctum\Http\Middleware\EnsureFrontendRequestsAreStateful::class,
-            \Illuminate\Routing\Middleware\ThrottleRequests::class.':api',
+            \Illuminate\Routing\Middleware\ThrottleRequests::class . ':api',
             \Illuminate\Routing\Middleware\SubstituteBindings::class,
         ],
     ];
 
     /**
-     * The application's middleware aliases.
-     *
-     * Aliases may be used instead of class names to conveniently assign middleware to routes and groups.
+     * Aliases de middleware para facilitar su uso
+     * 
+     * Permite usar nombres cortos en lugar de clases completas
+     * al asignar middleware a rutas y controladores específicos.
      *
      * @var array<string, class-string|string>
      */
