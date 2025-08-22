@@ -1,18 +1,51 @@
+<!-- 
+    ============================================================================
+    VISTA PRINCIPAL DE MATERIALES - FONTTRACK SYSTEM
+    ============================================================================
+    
+    Esta vista constituye el núcleo del sistema de gestión de materiales para
+    usuarios autenticados. Proporciona funcionalidades completas para:
+    
+    • Visualización y búsqueda de materiales por ubicación
+    • Gestión de inventario (aumentar/disminuir existencias)
+    • Generación de reportes de fallas y uso de materiales
+    • Importación masiva de datos desde archivos Excel (Kardex)
+    • Sistema de notificaciones pendientes para administradores
+    • Integración con vehículos y conductores por ubicación
+    • Control de acceso basado en roles y ubicaciones
+    
+    @author Gustavo Angel Cid Flores
+    @version 2.0.0
+    @package FontTrack\Views\Materials
+    ============================================================================
+-->
+
 <!DOCTYPE html>
 <html lang="es">
 
 <head>
+    <!-- ========================================================================
+         CONFIGURACIÓN BASE DEL DOCUMENTO
+         ======================================================================== -->
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link rel="icon" type="image/png" href="{{ asset('img/logo.png') }}">
     <title>Lista de Materiales - FontTrack</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet"
-        crossorigin="anonymous">
+    
+    <!-- Frameworks CSS y librerías externas -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" crossorigin="anonymous">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons/font/bootstrap-icons.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    
+    <!-- Token CSRF para protección de formularios AJAX -->
     <meta name="csrf-token" content="{{ csrf_token() }}">
 
     <style>
+        /**
+         * ====================================================================
+         * VARIABLES CSS PARA DISEÑO CONSISTENTE
+         * ====================================================================
+         */
         :root {
             --primary-orange: #F6B88F;
             --secondary-orange: #E38B5B;
@@ -30,93 +63,53 @@
             box-sizing: border-box;
         }
 
-        /* Animaciones globales */
+        /**
+         * ====================================================================
+         * ANIMACIONES GLOBALES PARA MEJORAR UX
+         * ====================================================================
+         */
         @keyframes float {
-
-            0%,
-            100% {
-                transform: translateY(0px);
-            }
-
-            50% {
-                transform: translateY(-8px);
-            }
+            0%, 100% { transform: translateY(0px); }
+            50% { transform: translateY(-8px); }
         }
 
         @keyframes slideInUp {
-            from {
-                opacity: 0;
-                transform: translateY(30px);
-            }
-
-            to {
-                opacity: 1;
-                transform: translateY(0);
-            }
+            from { opacity: 0; transform: translateY(30px); }
+            to { opacity: 1; transform: translateY(0); }
         }
 
         @keyframes fadeInScale {
-            from {
-                opacity: 0;
-                transform: scale(0.95);
-            }
-
-            to {
-                opacity: 1;
-                transform: scale(1);
-            }
+            from { opacity: 0; transform: scale(0.95); }
+            to { opacity: 1; transform: scale(1); }
         }
 
         @keyframes pulse {
-
-            0%,
-            100% {
-                opacity: 1;
-            }
-
-            50% {
-                opacity: 0.6;
-            }
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.6; }
         }
 
         @keyframes shimmer {
-            0% {
-                left: -100%;
-            }
-
-            100% {
-                left: 100%;
-            }
+            0% { left: -100%; }
+            100% { left: 100%; }
         }
 
         @keyframes spin {
-            0% {
-                transform: rotate(0deg);
-            }
-
-            100% {
-                transform: rotate(360deg);
-            }
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
         }
 
-        /* Animación para la campana */
+        /** Animación específica para notificaciones */
         @keyframes bellRing {
-
-            0%,
-            100% {
-                transform: rotate(0deg);
-            }
-
-            25% {
-                transform: rotate(15deg);
-            }
-
-            75% {
-                transform: rotate(-15deg);
-            }
+            0%, 100% { transform: rotate(0deg); }
+            25% { transform: rotate(15deg); }
+            75% { transform: rotate(-15deg); }
         }
 
-        /* Body & Background */
+        /**
+         * ====================================================================
+         * ESTILOS BASE DEL CUERPO Y FONDO
+         * ====================================================================
+         */
         body {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
             background: linear-gradient(135deg, var(--light-cream) 0%, #f8f1e8 100%);
@@ -127,6 +120,7 @@
             position: relative;
         }
 
+        /** Fondo decorativo con gradientes suaves */
         body::before {
             content: '';
             position: fixed;
@@ -142,7 +136,11 @@
             z-index: -1;
         }
 
-        /* Navbar mejorada */
+        /**
+         * ====================================================================
+         * NAVBAR PRINCIPAL CON EFECTOS AVANZADOS
+         * ====================================================================
+         */
         .navbar {
             background: linear-gradient(135deg, var(--primary-orange) 0%, var(--secondary-orange) 100%);
             box-shadow: 0 8px 32px var(--shadow-medium);
@@ -154,6 +152,7 @@
             backdrop-filter: blur(10px);
         }
 
+        /** Efecto de cristal en navbar */
         .navbar::before {
             content: '';
             position: absolute;
@@ -165,6 +164,7 @@
             pointer-events: none;
         }
 
+        /** Logo con efectos hover */
         .navbar .logo {
             cursor: pointer;
             transition: all 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94);
@@ -176,6 +176,7 @@
             filter: drop-shadow(0 8px 16px rgba(0, 0, 0, 0.3)) brightness(1.1);
         }
 
+        /** Enlaces de navegación con efectos shimmer */
         .navbar .nav-link {
             color: white !important;
             font-size: 1.1em;
@@ -209,14 +210,18 @@
             left: 100%;
         }
 
-        /* ✅ NUEVO: Contenedor para campana y usuario */
+        /**
+         * ====================================================================
+         * SISTEMA DE NOTIFICACIONES EN TIEMPO REAL
+         * ====================================================================
+         */
         .navbar-right-controls {
             display: flex;
             align-items: center;
             gap: 15px;
         }
 
-        /* Campana de notificaciones */
+        /** Campana de notificaciones animada */
         .notification-bell {
             position: relative;
             display: inline-block;
@@ -238,6 +243,7 @@
             filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.3));
         }
 
+        /** Badge de contador de notificaciones */
         .notification-badge {
             position: absolute;
             top: -8px;
@@ -260,7 +266,11 @@
             display: none;
         }
 
-        /* User profile */
+        /**
+         * ====================================================================
+         * PERFIL DE USUARIO CON DROPDOWN
+         * ====================================================================
+         */
         .user-profile {
             display: flex;
             align-items: center;
@@ -300,6 +310,7 @@
             text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.2);
         }
 
+        /** Menú desplegable del usuario */
         .user-dropdown {
             position: absolute;
             top: 120%;
@@ -340,7 +351,9 @@
             transform: translateX(5px);
         }
 
-        /* Container mejorado */
+        {{-- ====================================================================
+             CONTENEDOR PRINCIPAL CON EFECTOS GLASSMORPHISM
+             ==================================================================== --}}
         .container {
             background: rgba(255, 255, 255, 0.95);
             margin: 30px auto;
@@ -355,6 +368,7 @@
             overflow: hidden;
         }
 
+        {{-- Efecto de fondo animado --}}
         .container::before {
             content: '';
             position: absolute;
@@ -367,6 +381,7 @@
             pointer-events: none;
         }
 
+        {{-- Títulos principales con gradiente --}}
         h2 {
             font-size: 2.5em;
             font-weight: 700;
@@ -392,7 +407,9 @@
             border-radius: 2px;
         }
 
-        /* Modal de notificaciones */
+        {{-- ====================================================================
+             SISTEMA DE NOTIFICACIONES MODAL
+             ==================================================================== --}}
         .notification-modal {
             background: rgba(0, 0, 0, 0.5);
             backdrop-filter: blur(10px);
@@ -405,6 +422,7 @@
             background: linear-gradient(135deg, #fff 0%, #FCE8D5 100%);
         }
 
+        {{-- Items individuales de notificación --}}
         .notification-item {
             border: 1px solid rgba(227, 139, 91, 0.2);
             border-radius: 15px;
@@ -437,6 +455,7 @@
             border-color: var(--secondary-orange);
         }
 
+        {{-- Header y contenido de notificaciones --}}
         .notification-header {
             display: flex;
             justify-content: space-between;
@@ -462,12 +481,14 @@
             line-height: 1.4;
         }
 
+        {{-- Acciones de notificaciones --}}
         .notification-actions {
             margin-top: 15px;
             display: flex;
             gap: 10px;
         }
 
+        {{-- Botones de acción con efectos hover --}}
         .btn-approve {
             background: linear-gradient(135deg, #28a745, #20c997);
             border: none;
@@ -516,7 +537,9 @@
             box-shadow: 0 5px 15px rgba(0, 123, 255, 0.3);
         }
 
-        /* Loading states */
+        {{-- ====================================================================
+             ESTADOS DE CARGA Y VALIDACIÓN
+             ==================================================================== --}}
         .btn.loading {
             position: relative;
             pointer-events: none;
@@ -540,7 +563,7 @@
             opacity: 0;
         }
 
-        /* Password validation states */
+        {{-- Estados de validación de contraseña --}}
         .password-validation-success {
             border-color: #28a745;
             box-shadow: 0 0 0 0.2rem rgba(40, 167, 69, 0.25);
@@ -551,7 +574,9 @@
             box-shadow: 0 0 0 0.2rem rgba(220, 53, 69, 0.25);
         }
 
-        /* User authorization info */
+        {{-- ====================================================================
+             INFORMACIÓN DE AUTORIZACIÓN DE USUARIO
+             ==================================================================== --}}
         #datosUsuarioAutoriza {
             transition: all 0.4s ease;
             transform-origin: top;
@@ -563,29 +588,18 @@
             border-radius: 10px;
         }
 
-        /* Success message animation */
+        {{-- Animación para mensajes de éxito --}}
         .success-message {
             animation: successPulse 0.6s ease-in-out;
         }
 
         @keyframes successPulse {
-            0% {
-                transform: translate(-50%, -50%) scale(0.8);
-                opacity: 0;
-            }
-
-            50% {
-                transform: translate(-50%, -50%) scale(1.05);
-                opacity: 1;
-            }
-
-            100% {
-                transform: translate(-50%, -50%) scale(1);
-                opacity: 1;
-            }
+            0% { transform: translate(-50%, -50%) scale(0.8); opacity: 0; }
+            50% { transform: translate(-50%, -50%) scale(1.05); opacity: 1; }
+            100% { transform: translate(-50%, -50%) scale(1); opacity: 1; }
         }
 
-        /* No notifications state */
+        {{-- Estado sin notificaciones --}}
         .no-notifications {
             text-align: center;
             padding: 40px 20px;
@@ -598,7 +612,9 @@
             opacity: 0.5;
         }
 
-        /* Responsive */
+        {{-- ====================================================================
+             RESPONSIVE DESIGN PARA DISPOSITIVOS MÓVILES
+             ==================================================================== --}}
         @media (max-width: 768px) {
             .navbar-right-controls {
                 gap: 10px;
@@ -638,14 +654,15 @@
             }
         }
 
-        /* Campo de correo deshabilitado */
+        {{-- ====================================================================
+             ESTILOS PARA CAMPOS DE FORMULARIO
+             ==================================================================== --}}
         .campo-correo-disabled {
             background-color: #f8f9fa;
             cursor: not-allowed;
             opacity: 0.6;
         }
 
-        /* Animación para habilitar campo */
         .campo-correo-enabled {
             background-color: white;
             transition: all 0.3s ease;
@@ -653,16 +670,11 @@
         }
 
         @keyframes fieldHighlight {
-            0% {
-                background-color: #ffffcc;
-            }
-
-            100% {
-                background-color: white;
-            }
+            0% { background-color: #ffffcc; }
+            100% { background-color: white; }
         }
 
-        /* ✅ INDICADOR DE FILTRO ACTIVO */
+        {{-- Indicador de filtro activo --}}
         .filter-indicator {
             background: linear-gradient(135deg, #28a745, #20c997);
             color: white;
@@ -679,16 +691,23 @@
 </head>
 
 <body>
-    <!-- Navbar -->
+    <!-- ========================================================================
+         BARRA DE NAVEGACIÓN PRINCIPAL
+         ======================================================================== -->
     <nav class="navbar navbar-expand-lg">
         <div class="container-fluid">
+            <!-- Logo clickeable que redirecciona al inicio -->
             <img src="{{ asset('img/FontTrack.png') }}" alt="logo" height="70px" width="100px" class="logo"
                 onclick="window.location.href='{{ route('users') }}'">
+            
+            <!-- Botón hamburguesa para móvil -->
             <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav"
                 aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
                 <span class="navbar-toggler-icon"></span>
             </button>
+            
             <div class="collapse navbar-collapse" id="navbarNav">
+                <!-- Menú de navegación principal -->
                 <ul class="navbar-nav me-auto">
                     <li class="nav-item">
                         <a class="nav-link active" href="{{ route('users') }}">
@@ -712,16 +731,18 @@
                     </li>
                 </ul>
 
+                <!-- Panel de controles del lado derecho -->
                 <div class="navbar-right-controls">
+                    <!-- Solo mostrar notificaciones si el usuario tiene lugar asignado -->
                     @if(Auth::user()->id_lugar)
-                    <!-- Campana de notificaciones -->
+                    <!-- Campana de notificaciones con badge dinámico -->
                     <div class="notification-bell" id="notificationBell" title="Notificaciones pendientes">
                         <i class="fas fa-bell bell-icon"></i>
                         <span class="notification-badge hidden" id="notificationBadge">0</span>
                     </div>
                     @endif
 
-                    <!-- Perfil de usuario -->
+                    <!-- Perfil de usuario con dropdown -->
                     <div class="user-profile" id="userProfileDropdown">
                         <img src="{{ Auth::user()->foto_usuario_url ?? asset('img/usuario_default.png') }}"
                             alt="Foto de perfil">
@@ -741,8 +762,11 @@
         </div>
     </nav>
 
-    <!-- Modal de Notificaciones -->
+    <!-- ========================================================================
+         SISTEMA MODULAR DE NOTIFICACIONES
+         ======================================================================== -->
     @if(Auth::user()->id_lugar)
+    <!-- Modal principal de notificaciones -->
     <div class="modal fade notification-modal" id="modalNotificaciones" tabindex="-1">
         <div class="modal-dialog modal-lg">
             <div class="modal-content">
@@ -772,7 +796,7 @@
         </div>
     </div>
 
-    <!-- Modal para ver detalles de notificación -->
+    {{-- Modal para ver detalles de notificación específica --}}
     <div class="modal fade" id="modalDetalleNotificacion" tabindex="-1">
         <div class="modal-dialog modal-lg">
             <div class="modal-content">
@@ -781,7 +805,7 @@
                     <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                 </div>
                 <div class="modal-body" id="detalleNotificacionBody">
-                    <!-- Se carga via AJAX -->
+                    <!-- Contenido cargado via AJAX -->
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
@@ -790,7 +814,7 @@
         </div>
     </div>
 
-    <!-- Modal para aprobar notificación -->
+    {{-- Modal para aprobar notificación con validación de contraseña --}}
     <div class="modal fade" id="modalAprobarNotificacion" tabindex="-1">
         <div class="modal-dialog">
             <div class="modal-content">
@@ -804,6 +828,8 @@
                         <strong>¡Atención!</strong> Al aprobar esta notificación se creará automáticamente un reporte de
                         falla y se descontará el stock de los materiales.
                     </div>
+                    
+                    {{-- Campo de validación de contraseña --}}
                     <div class="mb-3">
                         <label for="passwordAprobar" class="form-label">Confirma tu contraseña:</label>
                         <div class="input-group">
@@ -821,6 +847,7 @@
                         </small>
                     </div>
 
+                    {{-- Información del usuario que autoriza --}}
                     <div id="datosUsuarioAutoriza" class="mb-3" style="display: none;">
                         <div class="alert alert-success">
                             <h6><i class="fas fa-user-check"></i> Usuario que autoriza:</h6>
@@ -829,6 +856,7 @@
                         </div>
                     </div>
 
+                    {{-- Campo para correo de envío del reporte --}}
                     <div class="mb-3">
                         <label for="comentariosAprobar" class="form-label">
                             <i class="fas fa-envelope"></i> Correo para envío del reporte:
@@ -838,6 +866,8 @@
                         <small class="form-text text-muted">Se enviará el PDF del reporte a este correo
                             electrónico</small>
                     </div>
+                    
+                    {{-- Contenedor de errores --}}
                     <div id="errorAprobar" class="alert alert-danger d-none">
                         <i class="fas fa-times-circle"></i>
                         <span id="errorAprobarMessage">Error al procesar</span>
@@ -853,7 +883,7 @@
         </div>
     </div>
 
-    <!-- Modal para rechazar notificación -->
+    {{-- Modal para rechazar notificación --}}
     <div class="modal fade" id="modalRechazarNotificacion" tabindex="-1">
         <div class="modal-dialog">
             <div class="modal-content">
@@ -888,7 +918,9 @@
     </div>
     @endif
 
-    <!-- Modal para subir archivos del Cardex -->
+    {{-- ========================================================================
+         MODAL PARA IMPORTACIÓN DE KARDEX (EXCEL)
+         ======================================================================== --}}
     <div class="modal fade" id="modalCardex" tabindex="-1">
         <div class="modal-dialog modal-lg">
             <div class="modal-content">
@@ -899,11 +931,14 @@
                         <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                     </div>
                     <div class="modal-body">
+                        {{-- Información del lugar --}}
                         <div class="mb-3">
                             <label for="id_lugar" class="form-label">Lugar:</label>
                             <input type="text" class="form-control" value="{{ Auth::user()->lugar->nombre ?? 'Sin lugar asignado' }}" readonly>
                             <input type="hidden" name="id_lugar" value="{{ Auth::user()->id_lugar }}">
                         </div>
+                        
+                        {{-- Selector de archivo Excel --}}
                         <div class="mb-3">
                             <label for="archivo_cardex" class="form-label">Seleccionar Archivo Excel:</label>
                             <input type="file" id="archivo_cardex" name="archivo_cardex" class="form-control"
@@ -911,6 +946,8 @@
                             <div class="form-text">El archivo debe contener: Clave Material, Descripción, Genérico,
                                 Clasificación, Existencia, Costo Promedio.</div>
                         </div>
+                        
+                        {{-- Especificaciones del formato requerido --}}
                         <div class="alert alert-info">
                             <strong>Formato requerido:</strong>
                             <ul class="mb-0">
@@ -922,6 +959,8 @@
                                 <li>Costo Promedio</li>
                             </ul>
                         </div>
+                        
+                        {{-- Barra de progreso para la subida --}}
                         <div id="progreso" class="mb-3" style="display: none;">
                             <div class="progress">
                                 <div class="progress-bar" role="progressbar" style="width: 0%"></div>
@@ -938,9 +977,12 @@
         </div>
     </div>
 
+    <!-- ========================================================================
+         CONTENIDO PRINCIPAL - LISTA DE MATERIALES
+         ======================================================================== -->
     @if(Auth::user()->id_lugar || Auth::user()->tipo_usuario == 1)
-    <!-- ✅ CONTENIDO PRINCIPAL CON FILTRO CORRECTO -->
     <div class="container mt-4">
+        <!-- Título principal con información contextual -->
         <h2 class="mb-3">
             Lista de Materiales
             @if(Auth::user()->tipo_usuario == 1)
@@ -950,34 +992,46 @@
             @endif
         </h2>
         
-        <!-- ✅ INDICADOR VISUAL DEL FILTRO ACTIVO -->
+        <!-- Indicador visual del filtro activo para usuarios no admin -->
         @if(Auth::user()->tipo_usuario != 1)
         <div class="text-center mb-4">
             <span class="filter-indicator">
                 <i class="fas fa-filter"></i>
-                🔒 Filtro activo: Solo materiales de {{ Auth::user()->lugar->nombre ?? 'Sin lugar' }}
+                Filtro activo: Solo materiales de {{ Auth::user()->lugar->nombre ?? 'Sin lugar' }}
                 ({{ $materiales->total() }} {{ $materiales->total() == 1 ? 'material' : 'materiales' }})
             </span>
         </div>
         @endif
         
+        <!-- Barra de herramientas y controles -->
         <div class="d-flex justify-content-between align-items-center mb-3">
+            <!-- Botones de acción del lado izquierdo -->
             <div class="d-flex gap-2">
-                <button class="btn btn-success" data-bs-toggle="modal" data-bs-target="#modalCardex">🔑 Subir
-                    Kardex</button>
-                <button class="btn btn-warning" id="btnReporteFallas">📋 Reporte de Fallas</button>
+                <button class="btn btn-success" data-bs-toggle="modal" data-bs-target="#modalCardex">
+                    <i class="fas fa-upload"></i> Subir Kardex</button>
+                <button class="btn btn-warning" id="btnReporteFallas">
+                    <i class="fas fa-clipboard-list"></i> Reporte de Fallas</button>
             </div>
-            <a href="{{ route('materials.export') }}" class="btn btn-outline-primary">📤 Exportar Excel (Existencia)</a>
+            
+            {{-- Botón de exportación --}}
+            <a href="{{ route('materials.export') }}" class="btn btn-outline-primary">
+                <i class="fas fa-file-export"></i> Exportar Excel (Existencia)</a>
+            
+            <!-- Formulario de búsqueda -->
             <form class="d-flex" action="{{ route('materials') }}" method="GET">
                 <input class="form-control me-2" type="search" name="query" placeholder="Buscar material"
                     aria-label="Buscar" value="{{ request('query') }}">
                 <button class="btn btn-outline-success me-2" type="submit"><i class="bi bi-search"></i></button>
             </form>
+            
+            <!-- Botón para registrar nuevo material -->
             <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#modalMaterial"
                 id="btnNuevoMaterial">Registrar Material</button>
         </div>
         
-        <!-- ✅ TABLA FILTRADA - SIN FILTROS ADICIONALES -->
+        {{-- ====================================================================
+             TABLA PRINCIPAL DE MATERIALES
+             ==================================================================== --}}
         <div class="table-responsive">
             <table class="table mt-3">
                 <thead>
@@ -989,6 +1043,7 @@
                         <th>Clasificación</th>
                         <th>Existencia</th>
                         <th>Costo ($)</th>
+                        {{-- Columna de lugar solo para administradores --}}
                         @if(Auth::user()->tipo_usuario == 1)
                         <th>Lugar</th>
                         @endif
@@ -996,7 +1051,7 @@
                     </tr>
                 </thead>
                 <tbody>
-                    {{-- ✅ TABLA LIMPIA: Los materiales YA VIENEN FILTRADOS del controlador --}}
+                    {{-- Los materiales vienen pre-filtrados desde el controlador --}}
                     @forelse($materiales as $material)
                         <tr data-id="{{ $material->id_material }}">
                             <td>{{ $material->id_material }}</td>
@@ -1005,17 +1060,21 @@
                             <td>{{ $material->generico }}</td>
                             <td>{{ $material->clasificacion }}</td>
                             <td>
+                                {{-- Controles para modificar existencia --}}
                                 <div class="d-flex align-items-center justify-content-center gap-1">
                                     <button class="btn btn-sm btn-success btnAumentar"
-                                        data-id="{{ $material->id_material }}" title="Aumentar existencia"><i
-                                            class="bi bi-plus"></i></button>
+                                        data-id="{{ $material->id_material }}" title="Aumentar existencia">
+                                        <i class="bi bi-plus"></i>
+                                    </button>
                                     <span class="mx-2">{{ $material->existencia }}</span>
                                     <button class="btn btn-sm btn-danger btnDisminuir"
-                                        data-id="{{ $material->id_material }}" title="Reportar falla"><i
-                                            class="bi bi-dash"></i></button>
+                                        data-id="{{ $material->id_material }}" title="Reportar falla">
+                                        <i class="bi bi-dash"></i>
+                                    </button>
                                 </div>
                             </td>
                             <td>${{ number_format($material->costo_promedio, 2) }}</td>
+                            {{-- Información del lugar para administradores --}}
                             @if(Auth::user()->tipo_usuario == 1)
                             <td>
                                 <span class="badge bg-info">
@@ -1024,17 +1083,22 @@
                             </td>
                             @endif
                             <td class="d-flex flex-column flex-md-row action-buttons">
+                                {{-- Botones de acción para cada material --}}
                                 <button class="btn btn-info btnVer" data-id="{{ $material->id_material }}"
-                                    data-bs-toggle="modal" data-bs-target="#modalMaterial"><i
-                                        class="bi bi-eye"></i></button>
+                                    data-bs-toggle="modal" data-bs-target="#modalMaterial">
+                                    <i class="bi bi-eye"></i>
+                                </button>
                                 <button class="btn btn-warning btnEditar" data-id="{{ $material->id_material }}"
-                                    data-bs-toggle="modal" data-bs-target="#modalMaterial"><i
-                                        class="bi bi-pencil"></i></button>
-                                <button class="btn btn-danger btn-sm btnEliminar" data-id="{{ $material->id_material }}"><i
-                                        class="fas fa-trash"></i></button>
+                                    data-bs-toggle="modal" data-bs-target="#modalMaterial">
+                                    <i class="bi bi-pencil"></i>
+                                </button>
+                                <button class="btn btn-danger btn-sm btnEliminar" data-id="{{ $material->id_material }}">
+                                    <i class="fas fa-trash"></i>
+                                </button>
                             </td>
                         </tr>
                     @empty
+                        {{-- Estado vacío cuando no hay materiales --}}
                         <tr>
                             <td colspan="{{ Auth::user()->tipo_usuario == 1 ? '9' : '8' }}" class="text-center">
                                 <div class="py-4">
@@ -1059,12 +1123,14 @@
                 </tbody>
             </table>
         </div>
+        
+        {{-- Paginación con preservación de parámetros de búsqueda --}}
         <div class="mt-3 d-flex justify-content-center">
             {{ $materiales->appends(['query' => request('query')])->links('pagination::bootstrap-5') }}
         </div>
     </div>
     @else
-    <!-- Mensaje para usuarios sin lugar asignado -->
+    {{-- Mensaje para usuarios sin lugar asignado --}}
     <div class="container mt-4">
         <div class="alert alert-warning text-center">
             <i class="fas fa-exclamation-triangle fa-3x mb-3"></i>
@@ -1074,7 +1140,10 @@
     </div>
     @endif
 
-    <!-- Modal Material (Registro/Edición/Ver) -->
+    {{-- ========================================================================
+         MODALES PARA GESTIÓN DE MATERIALES
+         ======================================================================== --}}
+    {{-- Modal universal para crear/editar/ver materiales --}}
     <div class="modal fade" id="modalMaterial" tabindex="-1">
         <div class="modal-dialog">
             <div class="modal-content">
@@ -1092,7 +1161,7 @@
         </div>
     </div>
 
-    <!-- Modal Confirmación de Eliminación -->
+    {{-- Modal de confirmación para eliminación --}}
     <div class="modal fade" id="modalEliminar" tabindex="-1">
         <div class="modal-dialog">
             <div class="modal-content">
@@ -1111,7 +1180,7 @@
         </div>
     </div>
 
-    <!-- Modal Aumentar Existencia -->
+    {{-- Modal para aumentar existencia de materiales --}}
     <div class="modal fade" id="modalAumentar" tabindex="-1">
         <div class="modal-dialog modal-sm">
             <div class="modal-content">
@@ -1138,7 +1207,9 @@
         </div>
     </div>
 
-    <!-- Modal de Reporte de Fallas -->
+    {{-- ========================================================================
+         MODAL PRINCIPAL DE REPORTE DE FALLAS
+         ======================================================================== --}}
     <div class="modal fade" id="modalFalla" tabindex="-1">
         <div class="modal-dialog modal-lg">
             <div class="modal-content">
@@ -1149,12 +1220,14 @@
                         <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                     </div>
                     <div class="modal-body">
+                        {{-- Información del lugar --}}
                         <div class="mb-3">
                             <label for="id_lugar_falla" class="form-label">Lugar:</label>
                             <input type="text" class="form-control" value="{{ Auth::user()->lugar->nombre ?? 'Sin lugar asignado' }}" readonly>
                             <input type="hidden" name="id_lugar" value="{{ Auth::user()->id_lugar }}">
                         </div>
 
+                        {{-- Selector de vehículo con autocompletado --}}
                         <div class="mb-3">
                             <label for="vehiculo_eco" class="form-label">Selecciona Vehículo (ECO):</label>
                             <select id="vehiculo_eco" name="vehiculo_eco" class="form-select">
@@ -1163,6 +1236,7 @@
                             <small class="text-muted">Los datos del vehículo se llenarán automáticamente</small>
                         </div>
 
+                        {{-- Campos de información del vehículo --}}
                         <div class="row mb-2">
                             <div class="col-md-4">
                                 <label>No. ECO</label>
@@ -1189,10 +1263,14 @@
                                 <input type="date" name="fecha" id="campo_fecha" class="form-control">
                             </div>
                         </div>
+                        
+                        {{-- Información del conductor --}}
                         <div class="mb-3">
                             <label>Nombre del Conductor</label>
                             <input type="text" name="nombre_conductor" id="campo_conductor" class="form-control">
                         </div>
+                        
+                        {{-- Campos descriptivos del reporte --}}
                         <div class="mb-3">
                             <label>Descripción Servicio / Fallo</label>
                             <textarea name="descripcion" rows="3" class="form-control"></textarea>
@@ -1201,12 +1279,15 @@
                             <label>Observaciones Técnicas del Trabajo Realizado</label>
                             <textarea name="observaciones" rows="3" class="form-control"></textarea>
                         </div>
+                        
+                        {{-- Sección de materiales a utilizar --}}
                         <h6 class="mt-3">Materiales a utilizar</h6>
                         <div class="mb-3">
                             <label for="materialBuscar">Buscar Material</label>
                             <input type="text" id="materialBuscar" class="form-control" list="materialesList"
                                 placeholder="Ingrese clave o descripción">
-                            <!-- ✅ DATALIST FILTRADO: Solo materiales YA FILTRADOS por el controlador -->
+                            
+                            {{-- Lista de materiales filtrados por ubicación --}}
                             <datalist id="materialesList">
                                 @foreach($materiales as $material)
                                     <option data-id="{{ $material->id_material }}"
@@ -1217,7 +1298,7 @@
                             <button type="button" id="btnAgregarMaterial" class="btn btn-secondary mt-2">Agregar
                                 Material</button>
                             
-                            {{-- ✅ INFO SOLO PARA USUARIOS NO ADMIN --}}
+                            {{-- Información contextual para usuarios no admin --}}
                             @if(Auth::user()->tipo_usuario != 1)
                             <small class="text-muted d-block mt-1">
                                 <i class="fas fa-info-circle"></i> 
@@ -1226,6 +1307,8 @@
                             </small>
                             @endif
                         </div>
+                        
+                        {{-- Tabla de materiales seleccionados --}}
                         <div class="table-responsive">
                             <table class="table table-sm" id="selectedMaterialsTable">
                                 <thead>
@@ -1238,6 +1321,8 @@
                                 <tbody></tbody>
                             </table>
                         </div>
+                        
+                        {{-- Sección de firmas y autorización --}}
                         <div class="row mb-2">
                             <div class="col-md-6">
                                 <label>Nombre y firma de quien reporta</label>
@@ -1255,6 +1340,7 @@
                                 <input type="hidden" name="nombre_usuario_revisa" id="nombreUsuarioRevisa">
                                 <input type="hidden" name="correo_usuario_revisa" id="correoUsuarioRevisa">
 
+                                {{-- Validación de contraseña para autorización --}}
                                 <label class="mt-2">Contraseña del usuario que revisa</label>
                                 <div class="input-group">
                                     <input type="password" name="reviso_por" id="reviso_por" class="form-control"
@@ -1271,6 +1357,8 @@
                                     validada correctamente</small>
                             </div>
                         </div>
+                        
+                        {{-- Campo de correo para envío del reporte --}}
                         <div class="mb-2">
                             <label>Correo para enviar reporte</label>
                             <input type="email" name="correo_destino" id="correoDestino"
@@ -1278,10 +1366,13 @@
                             <small class="text-muted">Este campo se habilitará al presionar "Guardar y enviar
                                 PDF"</small>
                         </div>
+                        
+                        {{-- Campos ocultos para el procesamiento --}}
                         <input type="hidden" name="materials" id="materialsData">
                         <input type="hidden" name="enviar_correo" id="enviarCorreo" value="false">
                     </div>
                     <div class="modal-footer">
+                        {{-- Botones de acción del reporte --}}
                         <button type="button" id="btnGuardarPDF" class="btn btn-primary" disabled>
                             <i class="fas fa-save"></i> Guardar PDF
                         </button>
@@ -1295,7 +1386,7 @@
         </div>
     </div>
 
-    <!-- Modal para visualizar el PDF generado -->
+    {{-- Modal para visualizar PDF generado --}}
     <div class="modal fade" id="modalVerPDF" tabindex="-1">
         <div class="modal-dialog modal-lg" style="max-width: 90%;">
             <div class="modal-content">
@@ -1313,25 +1404,36 @@
         </div>
     </div>
 
+    {{-- ========================================================================
+         SCRIPTS JAVASCRIPT PARA FUNCIONALIDAD DINÁMICA
+         ======================================================================== --}}
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script>
+        /**
+         * ====================================================================
+         * INICIALIZACIÓN Y CONFIGURACIÓN GLOBAL
+         * ====================================================================
+         */
         $(document).ready(function () {
+            // Configuración CSRF para todas las peticiones AJAX
             $.ajaxSetup({
                 headers: {
                     'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content')
                 }
             });
 
+            // Variables globales para manejo de estado
             let currentNotificationId = null;
             let notificationsRefreshInterval = null;
             let passwordValidationTimeout = null;
             let passwordVerified = false;
 
+            // Inicializar notificaciones solo si el usuario tiene lugar asignado
             @if(Auth::user()->id_lugar)
             initNotifications();
             
-            // Cargar vehículos del lugar del usuario al abrir el modal
+            // Cargar datos del lugar al abrir modal de fallas
             $('#modalFalla').on('show.bs.modal', function() {
                 const idLugar = {{ Auth::user()->id_lugar }};
                 cargarVehiculosDelLugar(idLugar);
@@ -1340,11 +1442,17 @@
             });
             @endif
 
+            /**
+             * ================================================================
+             * SISTEMA DE NOTIFICACIONES EN TIEMPO REAL
+             * ================================================================
+             */
             function initNotifications() {
                 loadNotificationCounter();
                 startNotificationRefresh();
             }
 
+            // Actualización automática cada 30 segundos
             function startNotificationRefresh() {
                 notificationsRefreshInterval = setInterval(loadNotificationCounter, 30000);
             }
@@ -1355,6 +1463,7 @@
                 }
             }
 
+            // Cargar contador de notificaciones pendientes
             function loadNotificationCounter() {
                 $.get('/notificaciones/contador')
                     .done(function (response) {
@@ -1367,6 +1476,7 @@
                     });
             }
 
+            // Actualizar badge visual de notificaciones
             function updateNotificationBadge(count) {
                 const badge = $('#notificationBadge');
                 const bell = $('#notificationBell');
@@ -1380,6 +1490,7 @@
                 }
             }
 
+            // Cargar lista completa de notificaciones
             function loadNotifications() {
                 $('#notificationsContainer').html(`
                     <div class="text-center">
@@ -1404,6 +1515,7 @@
                     });
             }
 
+            // Renderizar notificaciones en el modal
             function renderNotifications(notificaciones, total) {
                 $('#modalNotificationCount').text(total);
 
@@ -1451,6 +1563,12 @@
                 $('#notificationsContainer').html(html);
             }
 
+            /**
+             * ================================================================
+             * CARGA DE DATOS RELACIONADOS (VEHÍCULOS, USUARIOS)
+             * ================================================================
+             */
+            // Cargar vehículos filtrados por lugar
             function cargarVehiculosDelLugar(idLugar) {
                 $('#vehiculo_eco').html('<option value="">-- Cargando vehículos... --</option>');
                 
@@ -1483,6 +1601,7 @@
                 }
             }
 
+            // Auto-llenar campos al seleccionar vehículo
             $('#vehiculo_eco').on('change', function () {
                 let selectedOption = $(this).find('option:selected');
                 let eco = selectedOption.val();
@@ -1507,6 +1626,7 @@
                 $('#campo_conductor').val('');
             }
 
+            // Cargar usuarios del lugar para reporte
             function cargarUsuariosDelLugar(idLugar) {
                 if (!idLugar) {
                     $('#usuarioReporta').html('<option value="">-- Selecciona el usuario que reporta --</option>');
@@ -1535,6 +1655,7 @@
                 });
             }
 
+            // Cargar usuarios administradores
             function cargarUsuariosAdmin() {
                 $.ajax({
                     url: '/usuarios/admin',
@@ -1558,6 +1679,11 @@
                 });
             }
 
+            /**
+             * ================================================================
+             * MANEJO DE ERRORES AJAX UNIFICADO
+             * ================================================================
+             */
             function handleAjaxError(xhr) {
                 const res = xhr.responseJSON;
                 if (res?.errors) {
@@ -1569,6 +1695,12 @@
                 }
             }
 
+            /**
+             * ================================================================
+             * EVENT HANDLERS DE LA INTERFAZ
+             * ================================================================
+             */
+            // Manejo del dropdown de usuario
             $('#userProfileDropdown').click(function (e) {
                 e.preventDefault();
                 $('#userDropdownMenu').toggleClass('show');
@@ -1580,6 +1712,7 @@
                 }
             });
 
+            // Toggle de visibilidad de contraseña
             $('#btnTogglePassword').click(function () {
                 const passwordField = $('#reviso_por');
                 const icon = $('#iconTogglePassword');
@@ -1593,7 +1726,11 @@
                 }
             });
 
-            // ✅ FUNCIÓN PARA EL MODAL DE MATERIALES CON SELECTOR DE LUGAR
+            /**
+             * ================================================================
+             * GESTIÓN DE MATERIALES - MODALES DINÁMICOS
+             * ================================================================
+             */
             function openMaterialModal(mode, data = {}) {
                 const modal = $('#modalMaterial');
                 const title = $('#modalMaterialTitle');
@@ -1617,7 +1754,7 @@
                 } else if (mode === 'edit' || mode === 'create') {
                     title.text(mode === 'edit' ? 'Editar Material' : 'Registrar Material');
                     
-                    // ✅ SELECTOR DE LUGAR
+                    // Generar opciones de lugares disponibles
                     let lugaresOptions = '<option value="">-- Selecciona un lugar --</option>';
                     @foreach($lugares as $lugar)
                         lugaresOptions += `<option value="{{ $lugar->id_lugar }}" ${data.id_lugar == {{ $lugar->id_lugar }} ? 'selected' : ''}>{{ $lugar->nombre }}</option>`;
@@ -1714,7 +1851,7 @@
                         </div>
                     `);
                     
-                    // ✅ Si es modo crear y el usuario no es admin, preseleccionar su lugar
+                    // Pre-seleccionar lugar del usuario si no es admin
                     if (mode === 'create' && {{ Auth::user()->tipo_usuario != 1 ? 'true' : 'false' }} && {{ Auth::user()->id_lugar ?? 'null' }}) {
                         setTimeout(() => {
                             $('#id_lugar_material').val({{ Auth::user()->id_lugar ?? 'null' }});
@@ -1732,6 +1869,9 @@
                 modal.modal('show');
             }
 
+            {{-- ================================================================
+                 MANEJADORES DE USUARIOS Y REPORTES
+                 ================================================================ --}}
             $('#usuarioReporta').on('change', function () {
                 let selectedOption = $(this).find('option:selected');
                 $('#nombreUsuarioReporta').val(selectedOption.data('nombre') || '');
@@ -1750,6 +1890,7 @@
                 $('#btnGuardarPDF, #btnGuardarEnviarPDF').prop('disabled', true);
             });
 
+            // Validar contraseña de administrador
             $('#btnValidarPassword').click(function () {
                 let usuarioId = $('#usuarioRevisa').val();
                 let password = $('#reviso_por').val();
@@ -1794,6 +1935,9 @@
                     });
             });
 
+            {{-- ================================================================
+                 GESTIÓN DE MATERIALES EN REPORTES
+                 ================================================================ --}}
             function agregarMaterial(materialInfo) {
                 let existe = false;
                 $("#selectedMaterialsTable tbody tr").each(function () {
@@ -1830,6 +1974,7 @@
                 $('#materialsData').val(JSON.stringify(materiales));
             }
 
+            // Event handlers para modificar cantidades de materiales
             $("#selectedMaterialsTable").on("click", ".btnInc", function () {
                 let input = $(this).closest('tr').find('input.cantidad');
                 input.val(parseInt(input.val()) + 1);
@@ -1868,6 +2013,9 @@
                 }
             });
 
+            {{-- ================================================================
+                 BOTONES DE REPORTE DE FALLAS
+                 ================================================================ --}}
             $('.btnDisminuir, #btnReporteFallas').click(function () {
                 if ($(this).hasClass('btnDisminuir')) {
                     let fila = $(this).closest('tr');
@@ -1893,6 +2041,7 @@
                 $('#enviarCorreo').val('false');
             });
 
+            // Botones de guardar PDF
             $("#btnGuardarPDF").click(function () {
                 if (!passwordVerified) {
                     alert('Por favor, valida la contraseña del usuario que revisa primero.');
@@ -1983,6 +2132,11 @@
                     });
             }
 
+            /**
+             * ================================================================
+             * CRUD DE MATERIALES - EVENT HANDLERS
+             * ================================================================
+             */
             $('.btnEditar').click(function () {
                 let id = $(this).data('id');
                 $.get(`/edit_material/${id}`, function (response) {
@@ -2001,13 +2155,13 @@
                 openMaterialModal('create');
             });
 
-            // ✅ ENVÍO DEL FORMULARIO CON VALIDACIONES COMPLETAS
+            // Envío del formulario de material con validaciones completas
             $('#formMaterial').off('submit').on('submit', function (e) {
                 e.preventDefault();
                 
-                console.log('🔄 Iniciando envío del formulario de material...');
+                console.log('Iniciando envío del formulario de material...');
                 
-                // ✅ VALIDACIONES ANTES DEL ENVÍO (INCLUYENDO LUGAR)
+                // Validaciones antes del envío (incluyendo lugar)
                 const idLugar = $('#id_lugar_material').val();
                 const clave = $('#clave_material').val();
                 const descripcion = $('#descripcion_material').val();
@@ -2015,31 +2169,31 @@
                 const costo = $('#costo_material').val();
                 
                 if (!idLugar || idLugar.trim() === '') {
-                    alert('❌ Error: Debes seleccionar un lugar');
+                    alert('Error: Debes seleccionar un lugar');
                     $('#id_lugar_material').focus();
                     return false;
                 }
                 
                 if (!clave || clave.trim() === '') {
-                    alert('❌ Error: La clave del material es obligatoria');
+                    alert('Error: La clave del material es obligatoria');
                     $('#clave_material').focus();
                     return false;
                 }
                 
                 if (!descripcion || descripcion.trim() === '') {
-                    alert('❌ Error: La descripción es obligatoria');
+                    alert('Error: La descripción es obligatoria');
                     $('#descripcion_material').focus();
                     return false;
                 }
                 
                 if (!existencia || existencia < 0) {
-                    alert('❌ Error: La existencia debe ser un número mayor o igual a 0');
+                    alert('Error: La existencia debe ser un número mayor o igual a 0');
                     $('#existencia_material').focus();
                     return false;
                 }
                 
                 if (!costo || costo <= 0) {
-                    alert('❌ Error: El costo debe ser mayor a 0');
+                    alert('Error: El costo debe ser mayor a 0');
                     $('#costo_material').focus();
                     return false;
                 }
@@ -2057,14 +2211,14 @@
                     type: method,
                     data: $(this).serialize(),
                     success: function (response) {
-                        console.log('✅ Material guardado exitosamente:', response);
+                        console.log('Material guardado exitosamente:', response);
                         
                         // Mostrar mensaje de éxito mejorado
                         const successAlert = `
                             <div class="alert alert-success alert-dismissible fade show position-fixed" 
                                  style="top: 20px; right: 20px; z-index: 9999; min-width: 300px;">
                                 <i class="fas fa-check-circle me-2"></i>
-                                <strong>¡Éxito!</strong> ${response.message}
+                                <strong>Éxito!</strong> ${response.message}
                                 <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
                             </div>
                         `;
@@ -2083,7 +2237,7 @@
                         }, 1000);
                     },
                     error: function(xhr) {
-                        console.error('❌ Error al guardar material:', xhr);
+                        console.error('Error al guardar material:', xhr);
                         
                         let errorMsg = 'Error desconocido';
                         
@@ -2121,6 +2275,11 @@
                 });
             });
 
+            /**
+             * ================================================================
+             * ELIMINACIÓN DE MATERIALES
+             * ================================================================
+             */
             $('.btnEliminar').click(function () {
                 const id = $(this).data('id');
                 $('#btnConfirmarEliminar').data('id', id);
@@ -2141,6 +2300,11 @@
                 });
             });
 
+            /**
+             * ================================================================
+             * AUMENTAR EXISTENCIA DE MATERIALES
+             * ================================================================
+             */
             $('.btnAumentar').click(function () {
                 const id = $(this).data('id');
                 const fila = $(this).closest('tr');
@@ -2168,6 +2332,9 @@
                 });
             });
 
+            {{-- ================================================================
+                 IMPORTACIÓN DE KARDEX (EXCEL)
+                 ================================================================ --}}
             $('#formCardex').submit(function (e) {
                 e.preventDefault();
                 const formData = new FormData(this);
@@ -2202,13 +2369,21 @@
                 });
             });
 
+            {{-- ================================================================
+                 EVENTOS ADICIONALES
+                 ================================================================ --}}
             $("#selectedMaterialsTable").on("change", ".cantidad", function () {
                 actualizarMaterialsData();
             });
 
+            // Establecer fecha actual por defecto
             $('#campo_fecha').val(new Date().toISOString().split('T')[0]);
 
-            // Funciones globales para notificaciones
+            /**
+             * ================================================================
+             * FUNCIONES GLOBALES PARA NOTIFICACIONES
+             * ================================================================
+             */
             window.verDetalleNotificacion = function(id) {
                 $.get(`/notificaciones/${id}`)
                     .done(function (response) {
@@ -2305,6 +2480,9 @@
                 $('#modalRechazarNotificacion').modal('show');
             };
 
+            {{-- ================================================================
+                 EVENT HANDLERS PARA NOTIFICACIONES
+                 ================================================================ --}}
             $('#notificationBell').click(function () {
                 $('#modalNotificaciones').modal('show');
                 loadNotifications();
@@ -2328,6 +2506,9 @@
                 }
             });
 
+            {{-- ================================================================
+                 VALIDACIÓN DE CONTRASEÑA PARA APROBACIÓN
+                 ================================================================ --}}
             $('#passwordAprobar').on('input', function () {
                 const password = $(this).val();
 
@@ -2402,6 +2583,9 @@
                 return email && emailRegex.test(email);
             }
 
+            {{-- ================================================================
+                 CONFIRMACIÓN DE APROBACIÓN
+                 ================================================================ --}}
             $('#btnConfirmarAprobar').click(function () {
                 const password = $('#passwordAprobar').val();
                 const correo = $('#comentariosAprobar').val();
@@ -2431,7 +2615,7 @@
                             $('#modalAprobarNotificacion').modal('hide');
                             $('#modalNotificaciones').modal('hide');
 
-                            showSuccessMessage('✅ ' + response.message);
+                            showSuccessMessage('Notificación aprobada: ' + response.message);
 
                             loadNotificationCounter();
                             setTimeout(() => {
@@ -2467,6 +2651,9 @@
                 }, 3000);
             }
 
+            {{-- ================================================================
+                 CONFIRMACIÓN DE RECHAZO
+                 ================================================================ --}}
             $('#btnConfirmarRechazar').click(function () {
                 const comentarios = $('#comentariosRechazar').val();
 
@@ -2487,7 +2674,7 @@
                         if (response.success) {
                             $('#modalRechazarNotificacion').modal('hide');
 
-                            showSuccessMessage('❌ ' + response.message);
+                            showSuccessMessage('Notificación rechazada: ' + response.message);
 
                             loadNotifications();
                             loadNotificationCounter();
@@ -2504,6 +2691,11 @@
                     });
             });
 
+            /**
+             * ================================================================
+             * LIMPIEZA DE MODALES AL CERRAR
+             * ================================================================
+             */
             $('#modalAprobarNotificacion, #modalRechazarNotificacion').on('hidden.bs.modal', function () {
                 currentNotificationId = null;
                 $(this).find('.alert').addClass('d-none');
@@ -2524,6 +2716,11 @@
                 }
             });
 
+            /**
+             * ================================================================
+             * LIMPIEZA AL CERRAR VENTANA
+             * ================================================================
+             */
             $(window).on('beforeunload', function () {
                 stopNotificationRefresh();
             });
@@ -2534,5 +2731,4 @@
         });
     </script>
 </body>
-
 </html>

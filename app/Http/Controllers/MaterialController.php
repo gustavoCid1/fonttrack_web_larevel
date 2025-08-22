@@ -1,5 +1,29 @@
 <?php
 
+/**
+ * ============================================================================
+ * CONTROLADOR PRINCIPAL DE MATERIALES - FONTTRACK SYSTEM
+ * ============================================================================
+ * 
+ * Este controlador maneja todas las operaciones relacionadas con materiales:
+ * 
+ * • CRUD completo de materiales con filtrado por ubicación
+ * • Gestión de inventario y control de existencias
+ * • Generación de reportes de fallas en PDF
+ * • Importación/exportación masiva de datos Excel (Kardex)
+ * • Sistema de validación de contraseñas para autorizaciones
+ * • Integración con vehículos y usuarios por ubicación
+ * • Envío de notificaciones por correo electrónico
+ * • Control de acceso basado en roles y ubicaciones
+ * 
+ * @author Gustavo Angel Cid Flores
+ * @version 2.1.0
+ * @since 2024
+ * @package App\Http\Controllers
+ * @requires Laravel 9+, PhpSpreadsheet, DomPDF
+ * ============================================================================
+ */
+
 namespace App\Http\Controllers;
 
 use App\Models\Material;
@@ -21,7 +45,16 @@ use App\Mail\ReporteFalla;
 class MaterialController extends Controller
 {
     /**
-     * ✅ FILTRO CORREGIDO: Vista filtrada por lugar del usuario
+     * ========================================================================
+     * VISTA PRINCIPAL CON FILTRADO POR UBICACIÓN
+     * ========================================================================
+     * 
+     * Muestra la lista de materiales filtrada según el tipo de usuario:
+     * - Administradores: Ven todos los materiales del sistema
+     * - Usuarios regulares: Solo ven materiales de su ubicación asignada
+     * 
+     * @param Request $request - Parámetros de búsqueda y filtrado
+     * @return \Illuminate\View\View - Vista con materiales filtrados
      */
     public function index(Request $request)
     {
@@ -29,22 +62,22 @@ class MaterialController extends Controller
         $lugares = Lugar::all();
         $query = $request->input('query');
 
-        // ✅ FILTRADO OBLIGATORIO POR LUGAR DEL USUARIO
+        /** FILTRADO OBLIGATORIO POR LUGAR DEL USUARIO */
         $materialesQuery = Material::with('lugar');
         
-        // 🔒 FILTRO PRINCIPAL: Si no es admin (tipo_usuario != 1), SOLO ver materiales de su lugar
+        /** FILTRO PRINCIPAL: Si no es admin (tipo_usuario != 1), SOLO ver materiales de su lugar */
         if ($user->tipo_usuario != 1) {
             if (!$user->id_lugar) {
-                // Si no tiene lugar asignado, no ve ningún material
+                /** Si no tiene lugar asignado, no ve ningún material */
                 $materialesQuery->whereRaw('1 = 0');
             } else {
-                // Solo materiales de su lugar
+                /** Solo materiales de su lugar */
                 $materialesQuery->where('id_lugar', $user->id_lugar);
             }
         }
-        // Si es admin (tipo_usuario == 1), ve todos los materiales
+        /** Si es admin (tipo_usuario == 1), ve todos los materiales */
         
-        // Aplicar filtro de búsqueda si existe
+        /** Aplicar filtro de búsqueda si existe */
         if ($query) {
             $materialesQuery->where(function ($q) use ($query) {
                 $q->where('clave_material', 'like', '%' . $query . '%')
@@ -56,10 +89,10 @@ class MaterialController extends Controller
             });
         }
         
-        // Obtener materiales paginados
+        /** Obtener materiales paginados */
         $materiales = $materialesQuery->orderBy('clave_material')->paginate(10);
 
-        // ✅ OBTENER VEHÍCULOS DEL LUGAR DEL USUARIO
+        /** OBTENER VEHÍCULOS DEL LUGAR DEL USUARIO */
         $vehiculos = [];
         if ($user->id_lugar) {
             $vehiculos = Vehiculo::where('id_lugar', $user->id_lugar)
@@ -73,14 +106,22 @@ class MaterialController extends Controller
     }
 
     /**
-     * ✅ OBTENER VEHÍCULOS POR LUGAR
+     * ========================================================================
+     * OBTENER VEHÍCULOS FILTRADOS POR UBICACIÓN
+     * ========================================================================
+     * 
+     * Retorna la lista de vehículos activos para una ubicación específica
+     * con validación de permisos según el tipo de usuario.
+     * 
+     * @param int $id_lugar - ID de la ubicación
+     * @return \Illuminate\Http\JsonResponse - Lista de vehículos en formato JSON
      */
     public function getVehiculosPorLugar($id_lugar)
     {
         try {
             $user = Auth::user();
 
-            // Verificar permisos
+            /** Verificar permisos */
             if ($user->tipo_usuario != 1 && $user->id_lugar != $id_lugar) {
                 return response()->json(['error' => 'No tienes permisos para ver estos vehículos'], 403);
             }
@@ -102,7 +143,15 @@ class MaterialController extends Controller
     }
 
     /**
-     * ✅ OBTENER DATOS ESPECÍFICOS DE UN VEHÍCULO POR ECO
+     * ========================================================================
+     * OBTENER DATOS ESPECÍFICOS DE VEHÍCULO POR ECO
+     * ========================================================================
+     * 
+     * Busca un vehículo específico por su número ECO y retorna
+     * sus datos completos incluyendo conductor habitual.
+     * 
+     * @param string $eco - Número ECO del vehículo
+     * @return \Illuminate\Http\JsonResponse - Datos del vehículo
      */
     public function getVehiculoPorEco($eco)
     {
@@ -131,7 +180,15 @@ class MaterialController extends Controller
     }
 
     /**
-     * ✅ CREAR MATERIAL CON VALIDACIÓN DE LUGAR
+     * ========================================================================
+     * CREAR NUEVO MATERIAL CON VALIDACIÓN DE UBICACIÓN
+     * ========================================================================
+     * 
+     * Crea un nuevo material en el sistema con validaciones completas
+     * de campos requeridos y verificación de ubicación válida.
+     * 
+     * @param Request $request - Datos del material a crear
+     * @return \Illuminate\Http\JsonResponse - Respuesta de éxito o error
      */
     public function store(Request $request)
     {
@@ -150,12 +207,20 @@ class MaterialController extends Controller
     }
 
     /**
-     * ✅ MOSTRAR MATERIAL CON INFORMACIÓN DEL LUGAR
+     * ========================================================================
+     * MOSTRAR MATERIAL ESPECÍFICO CON INFORMACIÓN DE UBICACIÓN
+     * ========================================================================
+     * 
+     * Retorna los datos completos de un material específico
+     * incluyendo información de la ubicación asignada.
+     * 
+     * @param int $id - ID del material
+     * @return \Illuminate\Http\JsonResponse - Datos del material
      */
     public function show($id)
     {
         if (!is_numeric($id)) {
-            return abort(404);
+            return response()->json(['error' => 'ID inválido'], 400);
         }
 
         $material = Material::with('lugar')->find($id);
@@ -170,7 +235,15 @@ class MaterialController extends Controller
     }
 
     /**
-     * ✅ EDITAR MATERIAL CON INFORMACIÓN DEL LUGAR
+     * ========================================================================
+     * PREPARAR MATERIAL PARA EDICIÓN
+     * ========================================================================
+     * 
+     * Retorna los datos de un material para ser editado,
+     * incluyendo información completa de la ubicación.
+     * 
+     * @param int $id - ID del material
+     * @return \Illuminate\Http\JsonResponse - Datos para edición
      */
     public function edit($id)
     {
@@ -186,7 +259,16 @@ class MaterialController extends Controller
     }
 
     /**
-     * ✅ ACTUALIZAR MATERIAL CON VALIDACIÓN DE LUGAR
+     * ========================================================================
+     * ACTUALIZAR MATERIAL CON VALIDACIÓN COMPLETA
+     * ========================================================================
+     * 
+     * Actualiza los datos de un material existente con validaciones
+     * de campos requeridos y verificación de ubicación.
+     * 
+     * @param Request $request - Nuevos datos del material
+     * @param int $id - ID del material a actualizar
+     * @return \Illuminate\Http\JsonResponse - Respuesta de éxito o error
      */
     public function update(Request $request, $id)
     {
@@ -209,12 +291,34 @@ class MaterialController extends Controller
         return response()->json(['message' => 'Material actualizado correctamente', 'data' => $material]);
     }
 
+    /**
+     * ========================================================================
+     * ELIMINAR MATERIAL DEL SISTEMA
+     * ========================================================================
+     * 
+     * Elimina permanentemente un material del sistema.
+     * 
+     * @param int $id - ID del material a eliminar
+     * @return \Illuminate\Http\JsonResponse - Confirmación de eliminación
+     */
     public function destroy($id)
     {
         Material::findOrFail($id)->delete();
         return response()->json(['message' => 'Material eliminado']);
     }
 
+    /**
+     * ========================================================================
+     * AUMENTAR EXISTENCIA DE MATERIAL
+     * ========================================================================
+     * 
+     * Incrementa la cantidad en stock de un material específico
+     * con validación de cantidad mínima.
+     * 
+     * @param Request $request - Cantidad a aumentar
+     * @param int $id - ID del material
+     * @return \Illuminate\Http\JsonResponse - Confirmación de actualización
+     */
     public function aumentarExistencia(Request $request, $id)
     {
         $material = Material::findOrFail($id);
@@ -229,6 +333,20 @@ class MaterialController extends Controller
         return response()->json(['message' => 'Existencia aumentada correctamente']);
     }
 
+    /**
+     * ========================================================================
+     * CREAR REPORTE DE FALLA CON GENERACIÓN DE PDF
+     * ========================================================================
+     * 
+     * Crea un reporte de falla completo con:
+     * - Validación de contraseña del usuario supervisor
+     * - Descuento automático de existencias de materiales
+     * - Generación de PDF del reporte
+     * - Envío opcional por correo electrónico
+     * 
+     * @param Request $request - Datos completos del reporte
+     * @return \Illuminate\Http\JsonResponse - Respuesta con URL del PDF generado
+     */
     public function crearReporteFalla(Request $request)
     {
         if (!Auth::check()) {
@@ -342,6 +460,18 @@ class MaterialController extends Controller
         }
     }
 
+    /**
+     * ========================================================================
+     * GENERAR PDF DEL REPORTE DE FALLA
+     * ========================================================================
+     * 
+     * Genera un archivo PDF personalizado del reporte de falla
+     * con todos los datos del vehículo, materiales y firmas.
+     * 
+     * @param int $reporteId - ID del reporte a generar
+     * @param Request $request - Datos adicionales del reporte
+     * @return string - Contenido del PDF generado
+     */
     private function generarPDF($reporteId, $request)
     {
         try {
@@ -390,6 +520,19 @@ class MaterialController extends Controller
         }
     }
 
+    /**
+     * ========================================================================
+     * ENVIAR REPORTE POR CORREO ELECTRÓNICO
+     * ========================================================================
+     * 
+     * Envía el reporte de falla generado por correo electrónico
+     * con copia al usuario autenticado.
+     * 
+     * @param int $reporteId - ID del reporte
+     * @param string $pdfContent - Contenido del PDF
+     * @param string $correoDestino - Correo de destino
+     * @throws \Exception Si hay error en el envío
+     */
     private function enviarCorreo($reporteId, $pdfContent, $correoDestino)
     {
         try {
@@ -424,12 +567,24 @@ class MaterialController extends Controller
         }
     }
 
+    /**
+     * ========================================================================
+     * MOSTRAR PDF DE REPORTE DE FALLA EN NAVEGADOR
+     * ========================================================================
+     * 
+     * Genera y muestra el PDF de un reporte de falla específico
+     * directamente en el navegador para visualización.
+     * 
+     * @param int $id - ID del reporte
+     * @return \Illuminate\Http\Response - PDF para mostrar en navegador
+     */
     public function mostrarPDFFalla($id)
     {
         try {
             $reporte = DB::table('tb_fallas')->where('id', $id)->first();
             if (!$reporte) {
-                return response()->json(['error' => 'Reporte no encontrado'], 404);
+                return response('Reporte no encontrado', 404)
+                    ->header('Content-Type', 'text/plain');
             }
 
             $lugar = Lugar::find($reporte->id_lugar);
@@ -472,10 +627,22 @@ class MaterialController extends Controller
 
         } catch (\Exception $e) {
             Log::error('Error al mostrar PDF: ' . $e->getMessage());
-            return response()->json(['error' => 'Error al generar PDF: ' . $e->getMessage()], 500);
+            return response('Error al generar PDF: ' . $e->getMessage(), 500)
+                ->header('Content-Type', 'text/plain');
         }
     }
 
+    /**
+     * ========================================================================
+     * VERIFICAR CONTRASEÑA DEL USUARIO ACTUAL
+     * ========================================================================
+     * 
+     * Valida la contraseña del usuario autenticado para
+     * operaciones que requieren confirmación adicional.
+     * 
+     * @param Request $request - Contraseña a verificar
+     * @return \Illuminate\Http\JsonResponse - Resultado de la verificación
+     */
     public function verificarPassword(Request $request)
     {
         $request->validate(['password' => 'required|string']);
@@ -497,6 +664,17 @@ class MaterialController extends Controller
         return response()->json(['success' => false, 'error' => 'Contraseña incorrecta'], 401);
     }
 
+    /**
+     * ========================================================================
+     * VERIFICAR CONTRASEÑA DE USUARIO ESPECÍFICO
+     * ========================================================================
+     * 
+     * Valida la contraseña de un usuario específico (generalmente admin)
+     * para autorizar operaciones críticas como reportes de falla.
+     * 
+     * @param Request $request - ID del usuario y contraseña
+     * @return \Illuminate\Http\JsonResponse - Resultado de la verificación
+     */
     public function verificarPasswordUsuario(Request $request)
     {
         $request->validate([
@@ -545,6 +723,16 @@ class MaterialController extends Controller
         }
     }
 
+    /**
+     * ========================================================================
+     * OBTENER LISTA DE USUARIOS ADMINISTRADORES
+     * ========================================================================
+     * 
+     * Retorna todos los usuarios con permisos de administrador
+     * para ser utilizados en selectores de autorización.
+     * 
+     * @return \Illuminate\Http\JsonResponse - Lista de administradores
+     */
     public function getUsuariosAdmin()
     {
         try {
@@ -562,6 +750,17 @@ class MaterialController extends Controller
         }
     }
 
+    /**
+     * ========================================================================
+     * OBTENER USUARIOS POR UBICACIÓN ESPECÍFICA
+     * ========================================================================
+     * 
+     * Retorna todos los usuarios asignados a una ubicación específica
+     * para formularios de reportes y asignaciones.
+     * 
+     * @param int $id - ID de la ubicación
+     * @return \Illuminate\Http\JsonResponse - Lista de usuarios de la ubicación
+     */
     public function getUsuariosPorLugar($id)
     {
         try {
@@ -579,6 +778,17 @@ class MaterialController extends Controller
         }
     }
 
+    /**
+     * ========================================================================
+     * IMPORTACIÓN MASIVA DE KARDEX DESDE EXCEL
+     * ========================================================================
+     * 
+     * Procesa archivos Excel con formato Kardex para importar
+     * materiales masivamente con validación de estructura y datos.
+     * 
+     * @param Request $request - Archivo Excel y ubicación destino
+     * @return \Illuminate\Http\JsonResponse - Resultado de la importación
+     */
     public function importCardex(Request $request)
     {
         ini_set('max_execution_time', 300);
@@ -680,6 +890,16 @@ class MaterialController extends Controller
         }
     }
 
+    /**
+     * ========================================================================
+     * DESCARGAR PLANTILLA DE KARDEX
+     * ========================================================================
+     * 
+     * Genera y descarga una plantilla Excel con el formato
+     * requerido para la importación de materiales.
+     * 
+     * @return \Symfony\Component\HttpFoundation\BinaryFileResponse - Archivo Excel
+     */
     public function downloadTemplate()
     {
         $spreadsheet = new Spreadsheet();
@@ -708,6 +928,16 @@ class MaterialController extends Controller
         return response()->download($temp_file, $filename)->deleteFileAfterSend(true);
     }
 
+    /**
+     * ========================================================================
+     * EXPORTAR MATERIALES CON EXISTENCIA A EXCEL
+     * ========================================================================
+     * 
+     * Genera un archivo Excel con todos los materiales que tienen
+     * existencia mayor a cero, incluyendo cálculos de valor total.
+     * 
+     * @return \Symfony\Component\HttpFoundation\BinaryFileResponse - Archivo Excel
+     */
     public function export()
     {
         $materiales = Material::where('existencia', '>', 0)->get();
